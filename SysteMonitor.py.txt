@@ -1,0 +1,62 @@
+import tkinter as tk
+import subprocess
+from tkinter import font
+
+def update_health():
+    # Clear the previous content
+    output_text.delete(1.0, tk.END)
+
+    # Get system health metrics
+    cpu_usage = subprocess.check_output("top -bn1 | grep 'Cpu(s)' | awk '{print $2 + $4}'", shell=True).decode('utf-8').strip()
+    memory_usage = subprocess.check_output("free -m | awk 'NR==2{printf \"%s/%sMB (%.2f%%)\", $3,$2,$3*100/$2}'", shell=True).decode('utf-8').strip()
+    disk_usage = subprocess.check_output("df -h / | awk '$NF==\"/\"{printf \"%d/%dGB (%s)\", $3,$2,$5}'", shell=True).decode('utf-8').strip()
+
+    # Update this line with your actual network interface name
+    network_interface = "YOUR_INTERFACE"  # e.g., eth0 or wlan0
+    try:
+        network_stats = subprocess.check_output(
+            f"cat /proc/net/dev | grep '{network_interface}' | awk '{{printf \"TX: %.2f MB, RX: %.2f MB\", $10/1024/1024, $2/1024/1024}}'", 
+            shell=True
+        ).decode('utf-8').strip()
+        
+        # Debugging output in the terminal
+        print(f"Network Stats: {network_stats}")
+
+    except subprocess.CalledProcessError as e:
+        network_stats = f"Error retrieving network stats: {e}"
+
+    # Update the text widget with the new metrics
+    output_text.insert(tk.END, f"CPU Usage: {cpu_usage}%\n")
+    output_text.insert(tk.END, f"Memory Usage: {memory_usage}\n")
+    output_text.insert(tk.END, f"Disk Usage: {disk_usage}\n")
+    output_text.insert(tk.END, f"Network Activity: {network_stats}\n")
+
+    # Schedule the next update
+    root.after(5000, update_health)  # Update every 5 seconds
+
+# Create the main window
+root = tk.Tk()
+root.title("Linux System Health Monitor")
+root.geometry("400x300")  # Set the window size
+root.configure(bg="#6A0DAD")  # Set a purple background color
+
+# Set up a custom font
+custom_font = font.Font(family="Helvetica", size=12)
+
+# Create a label for the title
+title_label = tk.Label(root, text="System Health Monitor", bg="#6A0DAD", fg="white", font=("Helvetica", 16, "bold"))
+title_label.pack(pady=10)  # Add some padding for spacing
+
+# Create a text widget to display the output
+output_text = tk.Text(root, height=10, width=50, bg="#4B0082", fg="white", font=custom_font, borderwidth=2, relief="solid")
+output_text.pack(pady=10)
+
+# Create a button to refresh manually
+refresh_button = tk.Button(root, text="Refresh Now", command=update_health, bg="#8A2BE2", fg="white", font=custom_font)
+refresh_button.pack(pady=5)
+
+# Start the update loop
+update_health()
+
+# Start the Tkinter event loop
+root.mainloop()
